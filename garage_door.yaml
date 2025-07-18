@@ -1,0 +1,95 @@
+esphome:
+  name: garage-door
+  friendly_name: Garage Door
+
+esp8266:
+  board: d1_mini
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Garage-Door Fallback Hotspot"
+    password: !secret ap_password
+
+captive_portal:
+
+# Garage door position sensor (reed switch or similar)
+binary_sensor:
+  - platform: gpio
+    pin: 
+      number: GPIO14
+      mode: INPUT_PULLUP
+      inverted: false
+    name: "Garage Door Sensor"
+    id: garage_door_sensor
+    device_class: garage_door
+    filters:
+      - delayed_on: 200ms
+      - delayed_off: 200ms
+
+# Relay to trigger garage door opener
+switch:
+  - platform: gpio
+    pin: GPIO5
+    name: "Garage Door Relay"
+    id: garage_door_relay
+    inverted: true
+    restore_mode: ALWAYS_OFF
+    internal: true  # Hide from HA since users should use the cover entity
+
+# Main garage door control
+cover:
+  - platform: template
+    name: "Garage Door"
+    id: garage_door_cover
+    device_class: garage
+    lambda: |-
+      if (id(garage_door_sensor).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - switch.turn_on: garage_door_relay
+      - delay: 1s
+      - switch.turn_off: garage_door_relay
+    close_action:
+      - switch.turn_on: garage_door_relay
+      - delay: 1s
+      - switch.turn_off: garage_door_relay
+    stop_action:
+      - switch.turn_on: garage_door_relay
+      - delay: 1s
+      - switch.turn_off: garage_door_relay
+
+# WiFi diagnostics
+sensor:
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    internal: true
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy # Reports the WiFi signal strength in %
+    source_id: wifi_signal_db
+    name: "WiFi Signal"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+    entity_category: "diagnostic"
+    device_class: "signal_strength"
