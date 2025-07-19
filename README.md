@@ -29,7 +29,7 @@ A simple and reliable garage door controller using ESPHome and an ESP8266 (D1 Mi
 
 1. **Clone this repository**
    ```bash
-   git clone https://github.com/undergroundpost/esphome-garage-door-controller
+   git clone https://github.com/undergroundpost/esphome-garage-door-controller.git
    cd esphome-garage-door-controller
    ```
 
